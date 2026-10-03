@@ -195,9 +195,9 @@ function css(v) { return getComputedStyle(document.documentElement).getPropertyV
 
 const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 const map = L.map("map", { scrollWheelZoom: true, zoomControl: true }).setView([HOME.lat, HOME.lng], 11);
-L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`, {
+L.tileLayer(`https://tile.openstreetmap.org/{z}/{x}/{y}.png`, {
   maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
 // Distance rings around Cardiff
