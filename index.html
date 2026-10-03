@@ -59,7 +59,20 @@
     letter-spacing: -0.01em;
   }
   .lede { color: var(--muted); margin: 0 0 22px; max-width: 34ch; }
-  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .search {
+    width: 100%;
+    font: 400 0.95rem "Figtree", system-ui, sans-serif;
+    color: var(--ink);
+    background: transparent;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 12px;
+    margin-bottom: 20px;
+  }
+  .search:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .search::placeholder { color: var(--muted); }
+  .empty { color: var(--muted); font-size: 0.9rem; padding: 12px 2px; }
   .chip {
     font: 500 0.9rem "Figtree", system-ui, sans-serif;
     border: 1.5px solid var(--line);
@@ -136,6 +149,8 @@
     <button class="chip" data-cat="do" aria-pressed="true"><span class="dot do"></span>Things to do</button>
   </div>
 
+  <input id="search" class="search" type="search" placeholder="Search by name or type..." aria-label="Search places">
+
   <div id="lists"></div>
 
   <footer>Distances are straight-line from central Cardiff; driving is longer. Pins are approximate, so use the directions link before heading out. Restaurant picks are from the Michelin Guide California.</footer>
@@ -162,6 +177,7 @@ const PLACES = [
   { region: "near", cat: "do", name: "Torrey Pines State Natural Reserve", lat: 32.9203, lng: -117.2531, q: "Torrey Pines State Natural Reserve", blurb: "Best short hike around: clifftop trails down to the beach." },
   { region: "near", cat: "do", name: "Torrey Pines Gliderport", lat: 32.8899, lng: -117.2510, q: "Torrey Pines Gliderport", blurb: "Watch paragliders launch off the cliffs, or book a tandem flight." },
   { region: "near", cat: "do", name: "La Jolla Cove", lat: 32.8506, lng: -117.2722, q: "La Jolla Cove", blurb: "Sea lions, tide pools, and kayak tours through the sea caves." },
+  { region: "near", cat: "do", name: "Flat Rock", lat: 32.8434, lng: -117.2789, q: "Flat Rock La Jolla", blurb: "Popular tide-pool and rock-climbing spot below Torrey Pines, great at low tide." },
 
   // Near Cardiff: places to eat
   { region: "near", cat: "eat", name: "Atelier Manna", lat: 33.0590, lng: -117.2970, q: "Atelier Manna Encinitas", blurb: "Bib Gourmand. Seasonal breakfast and lunch on a covered patio." },
@@ -219,6 +235,8 @@ L.marker([HOME.lat, HOME.lng], {
 const markers = new Map();
 const active = { eat: true, do: true };
 const listsEl = document.getElementById("lists");
+const searchEl = document.getElementById("search");
+const CATEGORY = { eat: "places to eat", do: "things to do" };
 
 REGIONS.forEach(region => {
   const h = document.createElement("h2"); h.textContent = region.title;
@@ -245,23 +263,37 @@ REGIONS.forEach(region => {
         if (window.innerWidth <= 760) window.scrollTo({ top: 0, behavior: "smooth" });
       });
       li.appendChild(btn); ul.appendChild(li);
-      markers.set(btn, { m, cat: p.cat });
+      markers.set(btn, { m, cat: p.cat, text: `${p.name} ${p.blurb} ${CATEGORY[p.cat]}`.toLowerCase() });
     });
   listsEl.append(h, note, ul);
+  region.heading = h; region.noteEl = note; region.ul = ul;
 });
+
+function applyFilters() {
+  const q = searchEl.value.trim().toLowerCase();
+  markers.forEach(({ m, cat, text }, btn) => {
+    const show = active[cat] && (!q || text.includes(q));
+    btn.hidden = !show;
+    btn.parentElement.hidden = !show;
+    if (show) m.addTo(map); else m.remove();
+  });
+  REGIONS.forEach(region => {
+    const any = Array.from(region.ul.children).some(li => !li.hidden);
+    region.heading.hidden = !any;
+    region.noteEl.hidden = !any;
+  });
+}
 
 document.querySelectorAll(".chip").forEach(chip => {
   chip.addEventListener("click", () => {
     const cat = chip.dataset.cat;
     active[cat] = !active[cat];
     chip.setAttribute("aria-pressed", String(active[cat]));
-    markers.forEach(({ m, cat: c }, btn) => {
-      const show = active[c];
-      btn.hidden = !show;
-      if (show) m.addTo(map); else m.remove();
-    });
+    applyFilters();
   });
 });
+
+searchEl.addEventListener("input", applyFilters);
 
 // Fit everything on first load
 const all = L.latLngBounds(PLACES.map(p => [p.lat, p.lng]).concat([[HOME.lat, HOME.lng]]));
