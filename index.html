@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>San Diego from Cardiff: where to eat and what to do</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fog: #EDF2F1;
+    --panel: #FFFFFF;
+    --ink: #10313B;
+    --muted: #55707A;
+    --line: #CFDCDA;
+    --ocean: #1C6E8C;
+    --eat: #C98A12;
+    --do: #3E7A52;
+    --home: #10313B;
+    --focus: #1C6E8C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fog: #0C1E24;
+      --panel: #12282F;
+      --ink: #E4EEEC;
+      --muted: #93ABB0;
+      --line: #24414A;
+      --ocean: #5FB3CF;
+      --eat: #E8B04A;
+      --do: #74B98A;
+      --home: #E4EEEC;
+      --focus: #5FB3CF;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--fog);
+    color: var(--ink);
+    font: 400 15px/1.5 "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) 1fr;
+    height: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  aside {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 28px 24px 40px;
+  }
+  h1 {
+    font: 400 2.1rem/1.05 "Young Serif", Georgia, serif;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  .lede { color: var(--muted); margin: 0 0 22px; max-width: 34ch; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .chip {
+    font: 500 0.9rem "Figtree", system-ui, sans-serif;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip[aria-pressed="true"] { border-color: var(--ink); }
+  .chip[aria-pressed="false"] { opacity: 0.5; }
+  .chip:focus-visible, .item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .dot.eat { background: var(--eat); }
+  .dot.do { background: var(--do); }
+  h2 {
+    font: 400 1.2rem "Young Serif", Georgia, serif;
+    margin: 26px 0 4px;
+  }
+  .region-note { color: var(--muted); font-size: 0.88rem; margin: 0 0 8px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  .item {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: 4px 12px;
+    align-items: baseline;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 12px 2px;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .item:hover .name { color: var(--ocean); }
+  .item .dot { transform: translateY(1px); }
+  .name { font-weight: 600; }
+  .dist { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+  .blurb { grid-column: 2 / 4; color: var(--muted); font-size: 0.9rem; }
+  .item[hidden] { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin-top: 28px; }
+  #map { height: 100%; width: 100%; }
+  .home-pin {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--home); border: 4px solid var(--panel);
+    box-shadow: 0 0 0 2px var(--home);
+  }
+  .leaflet-popup-content { font: 400 14px/1.45 "Figtree", system-ui, sans-serif; margin: 12px 14px; }
+  .leaflet-popup-content strong { font-size: 15px; }
+  .leaflet-popup-content a { color: #1C6E8C; font-weight: 600; }
+  .ring-label {
+    background: none; border: 0; box-shadow: none;
+    color: var(--muted); font: 500 12px "Figtree", sans-serif;
+  }
+  .ring-label::before { display: none; }
+
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; grid-template-rows: 52vh auto; height: auto; }
+    #map { height: 52vh; order: -1; position: sticky; top: 0; z-index: 1; }
+    aside { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <h1>San Diego, starting from Cardiff</h1>
+  <p class="lede">Easy-to-get-into places to eat and things to do, from the beach towns up north to downtown. Tap anything to find it on the map.</p>
+
+  <div class="filters" role="group" aria-label="Show on map">
+    <button class="chip" data-cat="eat" aria-pressed="true"><span class="dot eat"></span>Places to eat</button>
+    <button class="chip" data-cat="do" aria-pressed="true"><span class="dot do"></span>Things to do</button>
+  </div>
+
+  <div id="lists"></div>
+
+  <footer>Distances are straight-line from central Cardiff; driving is longer. Pins are approximate, so use the directions link before heading out. Restaurant picks are from the Michelin Guide California.</footer>
+</aside>
+<div id="map" role="region" aria-label="Map of places"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const HOME = { name: "Cardiff-by-the-Sea", lat: 33.0195, lng: -117.2795 };
+
+const REGIONS = [
+  { id: "near", title: "Near Cardiff", note: "Beach towns within about 25 minutes." },
+  { id: "downtown", title: "Downtown and central San Diego", note: "About 30 minutes south, longer at rush hour." }
+];
+
+const PLACES = [
+  // Near Cardiff: things to do
+  { region: "near", cat: "do", name: "Cardiff State Beach", lat: 33.0089, lng: -117.2794, q: "Cardiff State Beach", blurb: "Closest beach. Mellow, easy parking, good low-tide walks." },
+  { region: "near", cat: "do", name: "San Elijo Lagoon", lat: 33.0078, lng: -117.2718, q: "San Elijo Lagoon Nature Center", blurb: "Flat trails and birdwatching right next to Cardiff." },
+  { region: "near", cat: "do", name: "Swami's and the Meditation Gardens", lat: 33.0347, lng: -117.2928, q: "Self-Realization Fellowship Meditation Gardens Encinitas", blurb: "Famous surf break below the cliffs, free gardens with ocean views, great at sunset." },
+  { region: "near", cat: "do", name: "Moonlight Beach", lat: 33.0480, lng: -117.2980, q: "Moonlight Beach Encinitas", blurb: "Classic beach with facilities, steps from downtown Encinitas." },
+  { region: "near", cat: "do", name: "Downtown Encinitas and Leucadia", lat: 33.0470, lng: -117.2930, q: "Downtown Encinitas Coast Highway 101", blurb: "Walk or bike Highway 101 for shops, coffee, and drinks." },
+  { region: "near", cat: "do", name: "Del Mar", lat: 32.9590, lng: -117.2690, q: "Powerhouse Park Del Mar", blurb: "Wide beaches and a small, walkable downtown." },
+  { region: "near", cat: "do", name: "Torrey Pines State Natural Reserve", lat: 32.9203, lng: -117.2531, q: "Torrey Pines State Natural Reserve", blurb: "Best short hike around: clifftop trails down to the beach." },
+  { region: "near", cat: "do", name: "Torrey Pines Gliderport", lat: 32.8899, lng: -117.2510, q: "Torrey Pines Gliderport", blurb: "Watch paragliders launch off the cliffs, or book a tandem flight." },
+  { region: "near", cat: "do", name: "La Jolla Cove", lat: 32.8506, lng: -117.2722, q: "La Jolla Cove", blurb: "Sea lions, tide pools, and kayak tours through the sea caves." },
+
+  // Near Cardiff: places to eat
+  { region: "near", cat: "eat", name: "Atelier Manna", lat: 33.0590, lng: -117.2970, q: "Atelier Manna Encinitas", blurb: "Bib Gourmand. Seasonal breakfast and lunch on a covered patio." },
+  { region: "near", cat: "eat", name: "Tanner's Prime Burgers", lat: 33.1815, lng: -117.3305, q: "Tanner's Prime Burgers Oceanside", blurb: "Michelin-recommended burgers from a former fine-dining chef. Walk-in." },
+
+  // Downtown: places to eat
+  { region: "downtown", cat: "eat", name: "LOLA 55", lat: 32.7156, lng: -117.1530, q: "LOLA 55 San Diego", blurb: "Bib Gourmand tacos. The easiest walk-in on the list." },
+  { region: "downtown", cat: "eat", name: "Callie", lat: 32.7105, lng: -117.1545, q: "Callie restaurant San Diego", blurb: "Bib Gourmand Mediterranean with a lively bar. Go early to walk in." },
+  { region: "downtown", cat: "eat", name: "Morning Glory", lat: 32.7235, lng: -117.1688, q: "Morning Glory San Diego Little Italy", blurb: "Bib Gourmand brunch in Little Italy. Weekdays are much easier." },
+  { region: "downtown", cat: "eat", name: "Ciccia Osteria", lat: 32.6990, lng: -117.1440, q: "Ciccia Osteria San Diego", blurb: "Bib Gourmand Italian in Barrio Logan. Small, so book same-day." },
+  { region: "downtown", cat: "eat", name: "Mabel's Gone Fishing", lat: 32.7474, lng: -117.1301, q: "Mabel's Gone Fishing San Diego", blurb: "Bib Gourmand seafood and gin in North Park. Try the bar." },
+  { region: "downtown", cat: "eat", name: "Cesarina", lat: 32.7495, lng: -117.2380, q: "Cesarina San Diego Voltaire", blurb: "Bib Gourmand fresh pasta in Ocean Beach." },
+
+  // Downtown: things to do
+  { region: "downtown", cat: "do", name: "Balboa Park", lat: 32.7341, lng: -117.1446, q: "Balboa Park San Diego", blurb: "Gardens, museums, and Spanish Revival architecture. Easy to spend half a day." },
+  { region: "downtown", cat: "do", name: "USS Midway Museum", lat: 32.7137, lng: -117.1751, q: "USS Midway Museum", blurb: "Aircraft carrier museum on the waterfront." },
+  { region: "downtown", cat: "do", name: "Embarcadero and Seaport Village", lat: 32.7092, lng: -117.1710, q: "Seaport Village San Diego", blurb: "Bayfront walk with harbor views." },
+  { region: "downtown", cat: "do", name: "Gaslamp Quarter", lat: 32.7116, lng: -117.1600, q: "Gaslamp Quarter San Diego", blurb: "Historic blocks of bars and nightlife, next to East Village." },
+  { region: "downtown", cat: "do", name: "Little Italy", lat: 32.7240, lng: -117.1690, q: "Little Italy San Diego", blurb: "Walkable neighborhood with a big Saturday farmers market." },
+  { region: "downtown", cat: "do", name: "Chicano Park", lat: 32.7004, lng: -117.1424, q: "Chicano Park San Diego", blurb: "Huge outdoor murals under the Coronado Bridge, near Ciccia." }
+];
+
+function miles(a, b) {
+  const R = 3958.8, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function esc(s) { return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+const map = L.map("map", { scrollWheelZoom: true, zoomControl: true }).setView([HOME.lat, HOME.lng], 11);
+L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`, {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+}).addTo(map);
+
+// Distance rings around Cardiff
+[10, 20].forEach(mi => {
+  L.circle([HOME.lat, HOME.lng], {
+    radius: mi * 1609.34, color: css("--ocean"), weight: 1, dashArray: "4 6", fill: false, interactive: false
+  }).addTo(map);
+  const north = L.latLng(HOME.lat + (mi * 1609.34) / 111320, HOME.lng);
+  L.tooltip({ permanent: true, direction: "center", className: "ring-label" })
+    .setLatLng(north).setContent(`${mi} mi`).addTo(map);
+});
+
+L.marker([HOME.lat, HOME.lng], {
+  icon: L.divIcon({ className: "", html: '<div class="home-pin"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }),
+  zIndexOffset: 1000, title: "Home base"
+}).addTo(map).bindPopup("<strong>Home base</strong><br>Cardiff-by-the-Sea");
+
+const markers = new Map();
+const active = { eat: true, do: true };
+const listsEl = document.getElementById("lists");
+
+REGIONS.forEach(region => {
+  const h = document.createElement("h2"); h.textContent = region.title;
+  const note = document.createElement("p"); note.className = "region-note"; note.textContent = region.note;
+  const ul = document.createElement("ul");
+  PLACES.filter(p => p.region === region.id)
+    .map(p => ({ ...p, d: miles(HOME, p) }))
+    .sort((a, b) => a.d - b.d)
+    .forEach(p => {
+      const color = css(p.cat === "eat" ? "--eat" : "--do");
+      const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.q)}`;
+      const m = L.circleMarker([p.lat, p.lng], {
+        radius: 8, color: css("--panel"), weight: 2, fillColor: color, fillOpacity: 1
+      }).addTo(map).bindPopup(
+        `<strong>${esc(p.name)}</strong><br>${esc(p.blurb)}<br><a href="${link}" target="_blank" rel="noopener">Open in Google Maps</a>`
+      );
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.className = "item"; btn.dataset.cat = p.cat;
+      btn.innerHTML = `<span class="dot ${p.cat}"></span><span class="name">${esc(p.name)}</span><span class="dist">${p.d.toFixed(0)} mi</span><span class="blurb">${esc(p.blurb)}</span>`;
+      btn.addEventListener("click", () => {
+        map.flyTo([p.lat, p.lng], 14, { duration: 0.8 });
+        m.openPopup();
+        if (window.innerWidth <= 760) window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      li.appendChild(btn); ul.appendChild(li);
+      markers.set(btn, { m, cat: p.cat });
+    });
+  listsEl.append(h, note, ul);
+});
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const cat = chip.dataset.cat;
+    active[cat] = !active[cat];
+    chip.setAttribute("aria-pressed", String(active[cat]));
+    markers.forEach(({ m, cat: c }, btn) => {
+      const show = active[c];
+      btn.hidden = !show;
+      if (show) m.addTo(map); else m.remove();
+    });
+  });
+});
+
+// Fit everything on first load
+const all = L.latLngBounds(PLACES.map(p => [p.lat, p.lng]).concat([[HOME.lat, HOME.lng]]));
+map.fitBounds(all, { padding: [30, 30] });
+</script>
+</body>
+</html>
